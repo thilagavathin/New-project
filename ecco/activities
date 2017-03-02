@@ -1,0 +1,82 @@
+<?php 
+include_once('config.php');
+session_start();
+error_reporting(0);
+if(!isset($_SESSION['adminlogin'])){
+header('Location:logout.php'); die;
+}
+if(isset($_POST['update_activities'])){
+    if(isset($_POST['activities'])){
+    
+    $new_activity[$_POST['bundle']]=explode(',',$_POST['activities'])  ; 
+    //print_r($new_activity);
+    $select_activity = mysql_query("Select activities,activities_checks from interventions where id=".$_POST['intervention_id']);
+    $row = mysql_fetch_array($select_activity);
+    $sql_activity = ($row['activities']!='' ? unserialize($row['activities']) : array());
+   
+    $activity =array_replace($sql_activity,$new_activity); 
+    //print_r($activity);
+    $where='';
+    $checkbox_checked=array();
+    if(isset($_POST['activities_checks'])){
+        $new_activities_checks[$_POST['bundle']]=explode(',',$_POST['activities_checks'])  ;
+        $checkbox_checked=explode(',',$_POST['checkbox_checked'])  ;
+        $c=0;
+        foreach($new_activities_checks[$_POST['bundle']] as $new_activities_checks){
+            $new_activities_checks_checked[$_POST['bundle']][$checkbox_checked[$c]]=$new_activities_checks;
+            $c++;
+        } 
+        //print_r($new_activities_checks_checked) ;
+        $sql_activities_checks = ($row['activities_checks']!='' ? unserialize($row['activities_checks']) : array());
+        //print_r($sql_activities_checks);
+        $activities_checks =array_replace($sql_activities_checks,$new_activities_checks_checked); 
+        $where.=",`activities_checks` = '".serialize($activities_checks)."'";
+    }  
+    
+        $insert_qry= "UPDATE `interventions` SET `activities` = '".str_replace("'", "\'", serialize($activity))."' ".$where."  WHERE `id` = '".$_POST['intervention_id']."' ";
+	    $insert=mysql_query($insert_qry);
+    }
+    
+    if($insert){
+       echo $insert_id=1;
+    }else{
+        echo '0';
+    }
+}else if(isset($_POST['activity_add'])){
+$bundle=$_POST['bundle'];
+$select_activity = mysql_query("Select activities from interventions where id=".$_POST['intervention_id']);
+$row = mysql_fetch_array($select_activity);
+
+$new_activity=array();
+$sql_activity = ($row['activities']!='' ? unserialize($row['activities']) : array());
+$new_activity=$sql_activity;
+array_push($new_activity[$bundle],$_POST['activities']);
+$activity =array_replace($sql_activity,$new_activity);
+
+    $insert_qry= "UPDATE `interventions` SET `activities` = '".str_replace("'", "\'", serialize($activity))."'  WHERE `id` = '".$_POST['intervention_id']."' ";
+	$insert=mysql_query($insert_qry);
+if($insert){
+$bundle_sql ="SELECT * FROM interventions WHERE id=".$_POST['intervention_id'] ;
+$bundle_details = mysql_query($bundle_sql);
+$bundle_row = mysql_fetch_assoc($bundle_details);
+$activities              =($bundle_row['activities']!=''               ? unserialize($bundle_row['activities']): $bundle_row['activities']);
+$activities_checks       =($bundle_row['activities_checks']!=''        ? unserialize($bundle_row['activities_checks']): $bundle_row['activities_checks']);
+
+ for($a=0;$a<count($activities[$bundle]);$a++) {
+    if($activities[$bundle][$a]!=''){?> 
+    <li class="col-md-3 col-xs-3">
+       <div class="blue_bg pad10 form-inline">
+            <div class="checkbox">
+                <label class="cus_cb">
+                    <input type="checkbox" class="hidden activity_inputcheckbox<?php echo $a;?>" <?php if($activities_checks[$bundle][$a]=='on'){ echo 'checked=""';} ?> name="activities_checks[<?php echo $bundle;?>][<?php echo $a;?>]" />
+                    <span></span>
+                </label>
+            </div>
+            <div class="form-group mar_l10">
+                <input type="text" class="form-control activity_inputtype<?php echo $a;?>" name="activities[<?php echo $bundle;?>][]" value="<?php echo $activities[$bundle][$a]; ?>" />
+            </div>
+       </div>
+    </li>
+<?php }}
+}else{echo '0';} 
+}?>
